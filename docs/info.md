@@ -1,4 +1,4 @@
-# Precision Farming Coprocessor - Tiny Tapeout 08
+Precision Farming Coprocessor - Tiny Tapeout 08
 
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
 ![Tiny Tapeout](https://img.shields.io/badge/Tiny%20Tapeout-08-orange)
@@ -6,11 +6,11 @@
 
 An autonomous environmental control coprocessor for microgreens and precision agriculture, designed for Tiny Tapeout 08.
 
-## 🌱 Overview
+🌱 Overview
 
 This hardware coprocessor continuously monitors environmental sensors and directly controls actuators to maintain optimal growing conditions for various crops—all without software intervention. It's designed for low-latency, predictable, and autonomous operation.
 
-### Key Features
+Key Features
 
 ✅ **4 Environmental Sensors** (2-bit each): Temperature, Humidity, Light, Soil Moisture  
 ✅ **5 Actuator Controls**: Water pump, Heater, Cooler, Lights, Dehumidifier  
@@ -21,7 +21,7 @@ This hardware coprocessor continuously monitors environmental sensors and direct
 ✅ **Low Latency**: Single-cycle sensor-to-actuator response  
 ✅ **Tiny Tapeout Compatible**: 1×2 tile, SKY130 process  
 
-## 📐 Architecture
+📐 Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -61,8 +61,7 @@ This hardware coprocessor continuously monitors environmental sensors and direct
 │  Water Pump │ Heater │ Cooler │ Lights │ Dehumidifier   │
 └─────────────────────────────────────────────────────────┘
 ```
-
-## 📊 Sensor Encoding
+📊 Sensor Encoding
 
 All sensors use **2-bit encoding** for 4-level precision:
 
@@ -73,37 +72,37 @@ All sensors use **2-bit encoding** for 4-level precision:
 | 2 | `10` | **Optimal** | **Optimal** | **Optimal** | **Optimal** |
 | 3 | `11` | Too Hot | Too Humid | Too Bright | Saturated |
 
-## 🌾 Crop Profiles
+🌾 Crop Profiles
 
 Select your crop using pins `uio[2:1]`:
 
-### Profile 0: Radish (`00`)
+Profile 0: Radish (`00`)
 - **Temperature**: Balanced (heat at 0, cool at 3)
 - **Humidity**: Moderate tolerance
 - **Light**: High requirement
 - **Water**: Moderate (water at level 1)
 
-### Profile 1: Basil (`01`)
+Profile 1: Basil (`01`)
 - **Temperature**: Warm-loving (heat at 0-1, cool at 3)
 - **Humidity**: Higher tolerance
 - **Light**: Very high (lights at 0-1)
 - **Water**: High (water at 0-1)
 
-### Profile 2: Pea Shoots (`10`)
+Profile 2: Pea Shoots (`10`)
 - **Temperature**: Cool preference (cool at 2-3)
 - **Humidity**: Moderate
 - **Light**: Medium requirement
 - **Water**: High (water at 0-1)
 
-### Profile 3: Sunflower (`11`)
+Profile 3: Sunflower (`11`)
 - **Temperature**: Moderate
 - **Humidity**: Lower tolerance (dehumidify at 2-3)
 - **Light**: High requirement
 - **Water**: Moderate
 
-## 📌 Pin Mapping
+📌 Pin Mapping
 
-### Dedicated Inputs (`ui_in[7:0]`)
+ Dedicated Inputs (`ui_in[7:0]`)
 | Pin | Signal | Description |
 |-----|--------|-------------|
 | 0-1 | sensor_temperature | Temperature (2-bit) |
@@ -111,7 +110,7 @@ Select your crop using pins `uio[2:1]`:
 | 4-5 | sensor_light | Light intensity (2-bit) |
 | 6-7 | sensor_soil_moisture | Soil moisture (2-bit) |
 
-### Dedicated Outputs (`uo_out[7:0]`)
+Dedicated Outputs (`uo_out[7:0]`)
 | Pin | Signal | Description |
 |-----|--------|-------------|
 | 0 | ctrl_water_pump | Water pump control |
@@ -123,7 +122,7 @@ Select your crop using pins `uio[2:1]`:
 | 6 | ctrl_dehumidifier | Dehumidifier |
 | 7 | (reserved) | Future expansion |
 
-### Bidirectional (`uio[7:0]`)
+Bidirectional (`uio[7:0]`)
 | Pin | Direction | Signal | Description |
 |-----|-----------|--------|-------------|
 | 0 | Input | cmd_override | Override/pause mode |
@@ -131,28 +130,28 @@ Select your crop using pins `uio[2:1]`:
 | 3 | Input | uart_rx | UART RX (future) |
 | 7 | Output | uart_tx | UART TX |
 
-## 🚀 Getting Started
+🚀 Getting Started
 
-### Prerequisites
+ Prerequisites
 - Icarus Verilog or Verilator
 - Python 3.8+ with cocotb
 - GTKWave (for waveform viewing)
 
-### Clone and Test
+Clone and Test
 ```bash
-# Clone the repository
+Clone the repository
 git clone https://github.com/SoorajSajeev/Precision-farming-coprocessor.git
 cd Precision-farming-coprocessor
 
-# Run tests (requires cocotb)
+Run tests (requires cocotb)
 cd test
 make
 
-# View waveforms
+View waveforms
 gtkwave tb.vcd
 ```
 
-### File Structure
+File Structure
 ```
 Precision-farming-coprocessor/
 ├── src/
@@ -165,7 +164,7 @@ Precision-farming-coprocessor/
 └── README.md                  # This file
 ```
 
-## 🧪 Testing
+🧪 Testing
 
 The project includes comprehensive Cocotb tests:
 
@@ -183,9 +182,9 @@ cd test
 make
 ```
 
-## 📝 Usage Example
+📝 Usage Example
 
-### Arduino Integration
+Arduino Integration
 ```cpp
 // Pin definitions
 const int CROP_BIT0 = 5;  // uio[1]
@@ -211,8 +210,7 @@ void selectCrop(Crop crop) {
   digitalWrite(CROP_BIT1, (crop >> 1) & 1);
 }
 ```
-
-## 🔮 Future Enhancements
+🔮 Future Enhancements
 
 - [ ] UART reporting of sensor values and fault codes
 - [ ] Configurable thresholds via serial interface
@@ -221,22 +219,21 @@ void selectCrop(Crop crop) {
 - [ ] More crop profiles
 - [ ] Integration with IoT platforms
 
-## 📄 License
+📄 License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-
-## 👤 Author
+ 👤 Author
 
 **SoorajSajeev**
 - GitHub: [@SoorajSajeev](https://github.com/SoorajSajeev)
 
-## 🙏 Acknowledgments
+🙏 Acknowledgments
 
 - Built for [Tiny Tapeout 08](https://tinytapeout.com)
 - Uses the open-source [SKY130 PDK](https://github.com/google/skywater-pdk)
 - Inspired by precision agriculture and sustainable farming
 
-## 📚 Documentation
+ 📚 Documentation
 
 For detailed documentation, see:
 - [docs/info.md](docs/info.md) - Complete project documentation
