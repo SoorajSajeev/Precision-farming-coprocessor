@@ -107,7 +107,7 @@ module tt_um_SoorajSajeev_precision_farming_coprocessor (
   );
 
   // Suppress unused signal warnings
-  wire _unused = &{uart_rx, 1'b0};
+  wire _unused = &{uart_rx, uio_in[7:4], 1'b0};
 
 endmodule
 
@@ -345,6 +345,6 @@ module ag_control_core (
   assign uart_tx = 1'b1;  // Idle high
 
   // Suppress unused warnings
-  wire _unused = &{FAULT_PERSIST, soil_needs_early_water, humid_lower_tolerance, 1'b0};
+  wire _unused = &{1'b0, soil_needs_early_water, humid_lower_tolerance};
 
 endmodule
