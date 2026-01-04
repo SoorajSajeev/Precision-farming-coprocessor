@@ -342,7 +342,40 @@ module ag_control_core (
   // UART INTERFACE (Placeholder - to be implemented in Step 4)
   // ===========================================================================
   
-  assign uart_tx = 1'b1;  // Idle high
+  // ===========================================================================
+  // UART INTERFACE
+  // ===========================================================================
+  
+  // UART signals
+  reg [7:0] uart_data;
+  reg uart_send;
+  wire uart_busy;
+  
+  // Simple fault code transmission
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      uart_data <= 8'h00;
+      uart_send <= 1'b0;
+    end else if (ena) begin
+      // Send fault code when fault detected
+      if (flag_fault && !uart_busy && !uart_send) begin
+        uart_data <= 8'h46;  // ASCII 'F' for Fault
+        uart_send <= 1'b1;
+      end else begin
+        uart_send <= 1'b0;
+      end
+    end
+  end
+  
+  // UART transmitter instance
+  uart_tx_simple uart_inst (
+    .clk(clk),
+    .rst_n(rst_n),
+    .data(uart_data),
+    .send(uart_send),
+    .tx(uart_tx),
+    .busy(uart_busy)
+  );
 
   // Suppress unused warnings
   wire _unused = &{1'b0, soil_needs_early_water, humid_lower_tolerance};
