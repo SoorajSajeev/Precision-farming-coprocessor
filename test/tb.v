@@ -5,7 +5,7 @@
 
 `timescale 1ns/1ps
 
-module tb_coprocessor;
+module tb;
 
   // Clock and reset
   reg clk;
