@@ -1,0 +1,192 @@
+import cocotb
+from cocotb.clock import Clock
+from cocotb.triggers import ClockCycles, RisingEdge
+
+@cocotb.test()
+async def test_reset(dut):
+    """Test that reset properly initializes the design"""
+    dut._log.info("Starting reset test")
+    
+    # Create clock
+    clock = Clock(dut.clk, 10, units="ns")  # 100 MHz for faster sim
+    cocotb.start_soon(clock.start())
+    
+    # Initialize all inputs
+    dut.ena.value = 1
+    dut.ui_in.value = 0
+    dut.uio_in.value = 0
+    dut.rst_n.value = 0
+    
+    # Hold reset for several cycles
+    await ClockCycles(dut.clk, 10)
+    dut.rst_n.value = 1
+    await ClockCycles(dut.clk, 10)
+    
+    # Check outputs are initialized (allow heartbeat bit)
+    output_val = int(dut.uo_out.value) & 0x1F  # Mask out heartbeat
+    assert output_val == 0, f"Outputs should be 0 after reset, got {output_val}"
+    dut._log.info("✓ Reset test passed")
+
+
+@cocotb.test()
+async def test_radish_temperature_cold(dut):
+    """Test Radish profile - temperature too cold triggers heater"""
+    dut._log.info("Testing Radish profile - cold temperature")
+    
+    clock = Clock(dut.clk, 10, units="ns")
+    cocotb.start_soon(clock.start())
+    
+    # Reset
+    dut.ena.value = 1
+    dut.rst_n.value = 0
+    dut.ui_in.value = 0
+    dut.uio_in.value = 0
+    await ClockCycles(dut.clk, 10)
+    dut.rst_n.value = 1
+    await ClockCycles(dut.clk, 5)
+    
+    # Select Radish profile (crop_select = 00)
+    dut.uio_in.value = 0b0000_0000
+    await ClockCycles(dut.clk, 2)
+    
+    # Set temperature too cold (00), other sensors optimal (10)
+    dut.ui_in.value = 0b10_10_10_00
+    await ClockCycles(dut.clk, 5)
+    
+    # Check heater is ON (bit 1)
+    heater_on = (int(dut.uo_out.value) >> 1) & 1
+    assert heater_on == 1, f"Heater should be ON, got {heater_on}"
+    dut._log.info("✓ Radish cold temperature test passed")
+
+
+@cocotb.test()
+async def test_soil_watering(dut):
+    """Test water pump activation when soil is dry"""
+    dut._log.info("Testing water pump control")
+    
+    clock = Clock(dut.clk, 10, units="ns")
+    cocotb.start_soon(clock.start())
+    
+    # Reset
+    dut.ena.value = 1
+    dut.rst_n.value = 0
+    dut.ui_in.value = 0
+    dut.uio_in.value = 0
+    await ClockCycles(dut.clk, 10)
+    dut.rst_n.value = 1
+    await ClockCycles(dut.clk, 5)
+    
+    # Radish profile
+    dut.uio_in.value = 0b0000_0000
+    await ClockCycles(dut.clk, 2)
+    
+    # Soil dry (00), everything else optimal (10)
+    dut.ui_in.value = 0b00_10_10_10
+    await ClockCycles(dut.clk, 5)
+    
+    # Check water pump ON (bit 0)
+    pump_on = int(dut.uo_out.value) & 1
+    assert pump_on == 1, f"Water pump should be ON, got {pump_on}"
+    dut._log.info("✓ Water pump test passed")
+
+
+@cocotb.test()
+async def test_override_mode(dut):
+    """Test that override disables all actuators"""
+    dut._log.info("Testing override functionality")
+    
+    clock = Clock(dut.clk, 10, units="ns")
+    cocotb.start_soon(clock.start())
+    
+    # Reset
+    dut.ena.value = 1
+    dut.rst_n.value = 0
+    dut.ui_in.value = 0
+    dut.uio_in.value = 0
+    await ClockCycles(dut.clk, 10)
+    dut.rst_n.value = 1
+    await ClockCycles(dut.clk, 5)
+    
+    # Radish profile, no override
+    dut.uio_in.value = 0b0000_0000
+    await ClockCycles(dut.clk, 2)
+    
+    # All sensors at extremes
+    dut.ui_in.value = 0b00_00_00_00
+    await ClockCycles(dut.clk, 5)
+    
+    # Some actuators should be ON
+    actuators_before = int(dut.uo_out.value) & 0x0F
+    dut._log.info(f"Actuators before override: 0x{actuators_before:X}")
+    
+    # Activate override
+    dut.uio_in.value = 0b0000_0001
+    await ClockCycles(dut.clk, 5)
+    
+    # All actuators should be OFF (check bits 0-3, 6)
+    actuators_after = int(dut.uo_out.value) & 0x4F
+    assert actuators_after == 0, f"Actuators should be OFF during override, got 0x{actuators_after:X}"
+    dut._log.info("✓ Override test passed")
+
+
+@cocotb.test()
+async def test_basil_extra_heat(dut):
+    """Test Basil needs heating even at cool temperature"""
+    dut._log.info("Testing Basil extra heating")
+    
+    clock = Clock(dut.clk, 10, units="ns")
+    cocotb.start_soon(clock.start())
+    
+    # Reset
+    dut.ena.value = 1
+    dut.rst_n.value = 0
+    dut.ui_in.value = 0
+    dut.uio_in.value = 0
+    await ClockCycles(dut.clk, 10)
+    dut.rst_n.value = 1
+    await ClockCycles(dut.clk, 5)
+    
+    # Select Basil (01)
+    dut.uio_in.value = 0b0000_0010
+    await ClockCycles(dut.clk, 2)
+    
+    # Temperature cool (01), not too cold
+    dut.ui_in.value = 0b10_10_10_01
+    await ClockCycles(dut.clk, 5)
+    
+    # Basil should still heat at "cool"
+    heater_on = (int(dut.uo_out.value) >> 1) & 1
+    assert heater_on == 1, f"Basil should heat at cool temp, got {heater_on}"
+    dut._log.info("✓ Basil extra heating test passed")
+
+
+@cocotb.test()
+async def test_all_optimal(dut):
+    """Test minimal actuation when all sensors optimal"""
+    dut._log.info("Testing all optimal conditions")
+    
+    clock = Clock(dut.clk, 10, units="ns")
+    cocotb.start_soon(clock.start())
+    
+    # Reset
+    dut.ena.value = 1
+    dut.rst_n.value = 0
+    dut.ui_in.value = 0
+    dut.uio_in.value = 0
+    await ClockCycles(dut.clk, 10)
+    dut.rst_n.value = 1
+    await ClockCycles(dut.clk, 5)
+    
+    # Radish profile (balanced)
+    dut.uio_in.value = 0b0000_0000
+    await ClockCycles(dut.clk, 2)
+    
+    # All sensors optimal (10)
+    dut.ui_in.value = 0b10_10_10_10
+    await ClockCycles(dut.clk, 5)
+    
+    # Basic actuators should be OFF (bits 0-3)
+    actuators = int(dut.uo_out.value) & 0x0F
+    dut._log.info(f"Actuators with all optimal: 0x{actuators:X}")
+    assert actuators == 0, f"Basic actuators should be OFF when optimal, got 0x{actuators:X}"
+    dut._log.info("✓ All optimal test passed")
