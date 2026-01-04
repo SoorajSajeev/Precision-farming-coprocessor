@@ -381,3 +381,99 @@ module ag_control_core (
   wire _unused = &{1'b0, soil_needs_early_water, humid_lower_tolerance};
 
 endmodule
+// =============================================================================
+// UART TRANSMITTER MODULE (115200 baud @ 25MHz)
+// =============================================================================
+
+module uart_tx_simple (
+    input  wire       clk,      // 25 MHz clock
+    input  wire       rst_n,    // Active low reset
+    input  wire [7:0] data,     // Data byte to send
+    input  wire       send,     // Pulse high to start transmission
+    output reg        tx,       // UART TX line
+    output reg        busy      // High when transmitting
+);
+
+  // UART timing (115200 baud @ 25MHz = 217 clocks per bit)
+  localparam CLKS_PER_BIT = 217;
+  
+  // State machine
+  localparam IDLE  = 3'd0;
+  localparam START = 3'd1;
+  localparam DATA  = 3'd2;
+  localparam STOP  = 3'd3;
+  
+  reg [2:0] state;
+  reg [7:0] clk_count;
+  reg [2:0] bit_index;
+  reg [7:0] tx_data;
+  
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      state <= IDLE;
+      tx <= 1'b1;
+      busy <= 1'b0;
+      clk_count <= 8'd0;
+      bit_index <= 3'd0;
+      tx_data <= 8'd0;
+    end else begin
+      case (state)
+        IDLE: begin
+          tx <= 1'b1;
+          busy <= 1'b0;
+          clk_count <= 8'd0;
+          bit_index <= 3'd0;
+          
+          if (send) begin
+            tx_data <= data;
+            state <= START;
+            busy <= 1'b1;
+          end
+        end
+        
+        START: begin
+          tx <= 1'b0;  // Start bit
+          
+          if (clk_count < CLKS_PER_BIT - 1) begin
+            clk_count <= clk_count + 1'b1;
+          end else begin
+            clk_count <= 8'd0;
+            state <= DATA;
+          end
+        end
+        
+        DATA: begin
+          tx <= tx_data[bit_index];
+          
+          if (clk_count < CLKS_PER_BIT - 1) begin
+            clk_count <= clk_count + 1'b1;
+          end else begin
+            clk_count <= 8'd0;
+            
+            if (bit_index < 7) begin
+              bit_index <= bit_index + 1'b1;
+            end else begin
+              bit_index <= 3'd0;
+              state <= STOP;
+            end
+          end
+        end
+        
+        STOP: begin
+          tx <= 1'b1;  // Stop bit
+          
+          if (clk_count < CLKS_PER_BIT - 1) begin
+            clk_count <= clk_count + 1'b1;
+          end else begin
+            clk_count <= 8'd0;
+            state <= IDLE;
+            busy <= 1'b0;
+          end
+        end
+        
+        default: state <= IDLE;
+      endcase
+    end
+  end
+
+endmodule
