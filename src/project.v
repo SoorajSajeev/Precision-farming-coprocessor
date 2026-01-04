@@ -2,8 +2,8 @@
  * Copyright (c) 2024 SoorajSajeev
  * SPDX-License-Identifier: Apache-2.0
  * 
- * Precision Farming Coprocessor
- * Autonomous environmental control for microgreens and precision agriculture
+ * Precision Farming Coprocessor - ENHANCED VERSION
+ * With Sensor Filtering and Data Logging
  */
 
 `default_nettype none
@@ -13,464 +13,373 @@
 // =============================================================================
 
 module tt_um_SoorajSajeev_precision_farming_coprocessor (
-    input  wire [7:0] ui_in,    // Dedicated inputs
-    output wire [7:0] uo_out,   // Dedicated outputs
-    input  wire [7:0] uio_in,   // IOs: Input path
-    output wire [7:0] uio_out,  // IOs: Output path
-    output wire [7:0] uio_oe,   // IOs: Enable path (active high: 0=input, 1=output)
-    input  wire       ena,      // Enable - always 1 when the design is powered
-    input  wire       clk,      // Clock
-    input  wire       rst_n     // Reset (active low)
+    input  wire [7:0] ui_in,
+    output wire [7:0] uo_out,
+    input  wire [7:0] uio_in,
+    output wire [7:0] uio_out,
+    output wire [7:0] uio_oe,
+    input  wire       ena,
+    input  wire       clk,
+    input  wire       rst_n
 );
 
-  // ===========================================================================
-  // Pin Assignments & Signal Naming
-  // ===========================================================================
+  // Pin Assignments
+  wire [1:0] sensor_temperature   = ui_in[1:0];
+  wire [1:0] sensor_humidity      = ui_in[3:2];
+  wire [1:0] sensor_light         = ui_in[5:4];
+  wire [1:0] sensor_soil_moisture = ui_in[7:6];
   
-  // INPUT SENSORS (ui_in[7:0]) - All 2-bit for 4-level precision
-  wire [1:0] sensor_temperature;   // 0=too_cold, 1=cool, 2=optimal, 3=too_hot
-  wire [1:0] sensor_humidity;      // 0=too_dry, 1=low, 2=optimal, 3=too_humid
-  wire [1:0] sensor_light;         // 0=dark, 1=low, 2=optimal, 3=too_bright
-  wire [1:0] sensor_soil_moisture; // 0=dry, 1=slightly_dry, 2=optimal, 3=saturated
+  wire       cmd_override = uio_in[0];
+  wire [1:0] crop_select  = uio_in[2:1];
+  wire       uart_rx      = uio_in[3];
   
-  assign sensor_temperature   = ui_in[1:0];
-  assign sensor_humidity      = ui_in[3:2];
-  assign sensor_light         = ui_in[5:4];
-  assign sensor_soil_moisture = ui_in[7:6];
+  wire ctrl_water_pump, ctrl_heater, ctrl_cooler, ctrl_light;
+  wire flag_fault, status_heartbeat, ctrl_dehumidifier, uart_tx;
   
-  // BIDIRECTIONAL CONTROL INPUTS (uio_in[7:0])
-  wire       cmd_override;   // Main processor override command
-  wire [1:0] crop_select;    // Crop profile selector
-  wire       uart_rx;        // UART receive (future)
-  
-  assign cmd_override = uio_in[0];
-  assign crop_select  = uio_in[2:1];
-  assign uart_rx      = uio_in[3];
-  
-  // ACTUATOR OUTPUTS (uo_out[7:0])
-  wire ctrl_water_pump;
-  wire ctrl_heater;
-  wire ctrl_cooler;
-  wire ctrl_light;
-  wire flag_fault;
-  wire status_heartbeat;
-  wire ctrl_dehumidifier;
-  
-  assign uo_out[0] = ctrl_water_pump;
-  assign uo_out[1] = ctrl_heater;
-  assign uo_out[2] = ctrl_cooler;
-  assign uo_out[3] = ctrl_light;
-  assign uo_out[4] = flag_fault;
-  assign uo_out[5] = status_heartbeat;
-  assign uo_out[6] = ctrl_dehumidifier;
-  assign uo_out[7] = 1'b0;  // Reserved
-  
-  // BIDIRECTIONAL OUTPUTS (uio_out[7:0])
-  wire uart_tx;
-  
-  assign uio_out[7]   = uart_tx;
-  assign uio_out[6:0] = 7'b0;
-  
-  // Bidirectional enable: only bit 7 is output (UART TX)
+  assign uo_out = {1'b0, ctrl_dehumidifier, status_heartbeat, flag_fault,
+                   ctrl_light, ctrl_cooler, ctrl_heater, ctrl_water_pump};
+  assign uio_out = {uart_tx, 7'b0};
   assign uio_oe = 8'b1000_0000;
 
-  // ===========================================================================
-  // Core Control Logic Instantiation
-  // ===========================================================================
-  
+  // Core instantiation
   ag_control_core core_inst (
-    .clk                 (clk),
-    .rst_n               (rst_n),
-    .ena                 (ena),
-    
-    // Sensor inputs
-    .sensor_temperature  (sensor_temperature),
-    .sensor_humidity     (sensor_humidity),
-    .sensor_light        (sensor_light),
+    .clk(clk), .rst_n(rst_n), .ena(ena),
+    .sensor_temperature(sensor_temperature),
+    .sensor_humidity(sensor_humidity),
+    .sensor_light(sensor_light),
     .sensor_soil_moisture(sensor_soil_moisture),
-    
-    // Control inputs
-    .cmd_override        (cmd_override),
-    .crop_select         (crop_select),
-    
-    // Actuator outputs
-    .ctrl_water_pump     (ctrl_water_pump),
-    .ctrl_heater         (ctrl_heater),
-    .ctrl_cooler         (ctrl_cooler),
-    .ctrl_light          (ctrl_light),
-    .ctrl_dehumidifier   (ctrl_dehumidifier),
-    
-    // Status outputs
-    .flag_fault          (flag_fault),
-    .status_heartbeat    (status_heartbeat),
-    .uart_tx             (uart_tx)
+    .cmd_override(cmd_override),
+    .crop_select(crop_select),
+    .ctrl_water_pump(ctrl_water_pump),
+    .ctrl_heater(ctrl_heater),
+    .ctrl_cooler(ctrl_cooler),
+    .ctrl_light(ctrl_light),
+    .ctrl_dehumidifier(ctrl_dehumidifier),
+    .flag_fault(flag_fault),
+    .status_heartbeat(status_heartbeat),
+    .uart_tx(uart_tx)
   );
 
-  // Suppress unused signal warnings
   wire _unused = &{uart_rx, uio_in[7:4], 1'b0};
 
 endmodule
 
 // =============================================================================
-// CORE CONTROL MODULE
+// CORE CONTROL MODULE WITH FILTERING AND LOGGING
 // =============================================================================
 
 module ag_control_core (
-    input  wire       clk,
-    input  wire       rst_n,
-    input  wire       ena,
-    
-    // Sensor inputs (all 2-bit)
-    input  wire [1:0] sensor_temperature,
-    input  wire [1:0] sensor_humidity,
-    input  wire [1:0] sensor_light,
-    input  wire [1:0] sensor_soil_moisture,
-    
-    // Control inputs
-    input  wire       cmd_override,    // Override/pause command
-    input  wire [1:0] crop_select,     // Crop profile selector
-    
-    // Actuator outputs
-    output reg        ctrl_water_pump,
-    output reg        ctrl_heater,
-    output reg        ctrl_cooler,
-    output reg        ctrl_light,
-    output reg        ctrl_dehumidifier,
-    
-    // Status outputs
-    output reg        flag_fault,
-    output reg        status_heartbeat,
+    input  wire       clk, rst_n, ena,
+    input  wire [1:0] sensor_temperature, sensor_humidity,
+                      sensor_light, sensor_soil_moisture,
+    input  wire       cmd_override,
+    input  wire [1:0] crop_select,
+    output reg        ctrl_water_pump, ctrl_heater, ctrl_cooler,
+                      ctrl_light, ctrl_dehumidifier,
+    output reg        flag_fault, status_heartbeat,
     output wire       uart_tx
 );
 
-  // ===========================================================================
-  // TIMING PARAMETERS
-  // ===========================================================================
-  
-  localparam HEARTBEAT_DIV = 25_000_000;  // 1 Hz at 25 MHz
-  // localparam FAULT_PERSIST = 100_000;     // Reserved for future fault detection
+  // Parameters
+  localparam HEARTBEAT_DIV = 25_000_000;
+  localparam FILTER_THRESHOLD = 100_000;
+  localparam LOG_INTERVAL = 2_500_000;
 
-  // ===========================================================================
-  // CROP PROFILE THRESHOLDS
-  // ===========================================================================
-  
-  // Threshold storage (selected by crop_select)
-  reg [1:0] temp_low_threshold;
-  reg [1:0] temp_high_threshold;
-  reg [1:0] humid_high_threshold;
-  reg [1:0] light_low_threshold;
-  reg [1:0] soil_low_threshold;
-  
-  // Additional thresholds for advanced profiles
-  reg temp_needs_extra_heat;   // Basil needs heating even at "cool"
-  reg light_needs_boost;       // Basil needs lights even at "low"
-  reg soil_needs_early_water;  // Basil/Pea need water earlier
-  reg humid_lower_tolerance;   // Sunflower dehumidify earlier
-  reg temp_cool_early;         // Pea shoots cool at "optimal"
-  
-  // Crop profile selector logic
+  // Filtered sensor values
+  reg [1:0] temp_filtered, humid_filtered, light_filtered, soil_filtered;
+  reg [16:0] temp_stable_count, humid_stable_count, light_stable_count, soil_stable_count;
+  reg [1:0] temp_prev, humid_prev, light_prev, soil_prev;
+
+  // Data logging
+  reg [1:0] temp_history[0:7], humid_history[0:7], light_history[0:7], soil_history[0:7];
+  reg [2:0] history_index;
+  reg [21:0] log_counter;
+  reg [1:0] temp_min, temp_max, humid_min, humid_max;
+  reg [1:0] light_min, light_max, soil_min, soil_max;
+  reg [1:0] temp_trend, humid_trend, light_trend, soil_trend;
+
+  // Crop thresholds
+  reg [1:0] temp_low_threshold, temp_high_threshold, humid_high_threshold;
+  reg [1:0] light_low_threshold, soil_low_threshold;
+  reg temp_needs_extra_heat, light_needs_boost, soil_needs_early_water;
+  reg humid_lower_tolerance, temp_cool_early;
+
+  // Control signals
+  reg temp_needs_heating, temp_needs_cooling, humid_needs_dehumidify;
+  reg light_needs_on, soil_needs_water;
+  reg [24:0] heartbeat_counter;
+  reg override_active;
+
+  // SENSOR FILTERING
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      {temp_filtered, humid_filtered, light_filtered, soil_filtered} <= {2'd2, 2'd2, 2'd2, 2'd2};
+      {temp_stable_count, humid_stable_count, light_stable_count, soil_stable_count} <= {17'd0, 17'd0, 17'd0, 17'd0};
+      {temp_prev, humid_prev, light_prev, soil_prev} <= {2'd2, 2'd2, 2'd2, 2'd2};
+    end else if (ena) begin
+      // Temperature
+      if (sensor_temperature == temp_prev) begin
+        if (temp_stable_count < FILTER_THRESHOLD) 
+          temp_stable_count <= temp_stable_count + 1'd1;
+        else 
+          temp_filtered <= sensor_temperature;
+      end else begin
+        temp_stable_count <= 17'd0;
+        temp_prev <= sensor_temperature;
+      end
+      
+      // Humidity
+      if (sensor_humidity == humid_prev) begin
+        if (humid_stable_count < FILTER_THRESHOLD) 
+          humid_stable_count <= humid_stable_count + 1'd1;
+        else 
+          humid_filtered <= sensor_humidity;
+      end else begin
+        humid_stable_count <= 17'd0;
+        humid_prev <= sensor_humidity;
+      end
+      
+      // Light
+      if (sensor_light == light_prev) begin
+        if (light_stable_count < FILTER_THRESHOLD) 
+          light_stable_count <= light_stable_count + 1'd1;
+        else 
+          light_filtered <= sensor_light;
+      end else begin
+        light_stable_count <= 17'd0;
+        light_prev <= sensor_light;
+      end
+      
+      // Soil
+      if (sensor_soil_moisture == soil_prev) begin
+        if (soil_stable_count < FILTER_THRESHOLD) 
+          soil_stable_count <= soil_stable_count + 1'd1;
+        else 
+          soil_filtered <= sensor_soil_moisture;
+      end else begin
+        soil_stable_count <= 17'd0;
+        soil_prev <= sensor_soil_moisture;
+      end
+    end
+  end
+
+  // DATA LOGGING
+  integer i;
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      history_index <= 3'd0;
+      log_counter <= 22'd0;
+      for (i = 0; i < 8; i = i + 1) begin
+        temp_history[i] <= 2'd2; humid_history[i] <= 2'd2;
+        light_history[i] <= 2'd2; soil_history[i] <= 2'd2;
+      end
+      {temp_min, temp_max} <= {2'd2, 2'd2};
+      {humid_min, humid_max} <= {2'd2, 2'd2};
+      {light_min, light_max} <= {2'd2, 2'd2};
+      {soil_min, soil_max} <= {2'd2, 2'd2};
+      {temp_trend, humid_trend, light_trend, soil_trend} <= {2'b11, 2'b11, 2'b11, 2'b11};
+    end else if (ena) begin
+      if (log_counter >= LOG_INTERVAL - 1) begin
+        log_counter <= 22'd0;
+        temp_history[history_index] <= temp_filtered;
+        humid_history[history_index] <= humid_filtered;
+        light_history[history_index] <= light_filtered;
+        soil_history[history_index] <= soil_filtered;
+        
+        if (temp_filtered < temp_min) temp_min <= temp_filtered;
+        if (temp_filtered > temp_max) temp_max <= temp_filtered;
+        if (humid_filtered < humid_min) humid_min <= humid_filtered;
+        if (humid_filtered > humid_max) humid_max <= humid_filtered;
+        if (light_filtered < light_min) light_min <= light_filtered;
+        if (light_filtered > light_max) light_max <= light_filtered;
+        if (soil_filtered < soil_min) soil_min <= soil_filtered;
+        if (soil_filtered > soil_max) soil_max <= soil_filtered;
+        
+        if (history_index > 0) begin
+          temp_trend <= (temp_filtered > temp_history[history_index-1]) ? 2'b01 :
+                        (temp_filtered < temp_history[history_index-1]) ? 2'b10 : 2'b00;
+          humid_trend <= (humid_filtered > humid_history[history_index-1]) ? 2'b01 :
+                         (humid_filtered < humid_history[history_index-1]) ? 2'b10 : 2'b00;
+          light_trend <= (light_filtered > light_history[history_index-1]) ? 2'b01 :
+                         (light_filtered < light_history[history_index-1]) ? 2'b10 : 2'b00;
+          soil_trend <= (soil_filtered > soil_history[history_index-1]) ? 2'b01 :
+                        (soil_filtered < soil_history[history_index-1]) ? 2'b10 : 2'b00;
+        end
+        history_index <= history_index + 1'd1;
+      end else 
+        log_counter <= log_counter + 1'd1;
+    end
+  end
+
+  // CROP PROFILES
   always @(*) begin
     case (crop_select)
-      2'b00: begin  // RADISH - Balanced profile
-        temp_low_threshold       = 2'd0;  // Heat at "too cold"
-        temp_high_threshold      = 2'd3;  // Cool at "too hot"
-        humid_high_threshold     = 2'd3;  // Dehumidify at "too humid"
-        light_low_threshold      = 2'd0;  // Lights at "dark"
-        soil_low_threshold       = 2'd1;  // Water at "slightly dry"
-        temp_needs_extra_heat    = 1'b0;
-        light_needs_boost        = 1'b0;
-        soil_needs_early_water   = 1'b0;
-        humid_lower_tolerance    = 1'b0;
-        temp_cool_early          = 1'b0;
+      2'b00: begin // RADISH
+        {temp_low_threshold, temp_high_threshold, humid_high_threshold, 
+         light_low_threshold, soil_low_threshold} = {2'd0, 2'd3, 2'd3, 2'd0, 2'd1};
+        {temp_needs_extra_heat, light_needs_boost, soil_needs_early_water,
+         humid_lower_tolerance, temp_cool_early} = 5'b00000;
       end
-      
-      2'b01: begin  // BASIL - Warm, humid, bright
-        temp_low_threshold       = 2'd0;
-        temp_high_threshold      = 2'd3;
-        humid_high_threshold     = 2'd3;
-        light_low_threshold      = 2'd0;
-        soil_low_threshold       = 2'd0;  // Water at "dry"
-        temp_needs_extra_heat    = 1'b1;  // Heat even at "cool"
-        light_needs_boost        = 1'b1;  // Lights even at "low"
-        soil_needs_early_water   = 1'b1;  // More water
-        humid_lower_tolerance    = 1'b0;
-        temp_cool_early          = 1'b0;
+      2'b01: begin // BASIL
+        {temp_low_threshold, temp_high_threshold, humid_high_threshold,
+         light_low_threshold, soil_low_threshold} = {2'd0, 2'd3, 2'd3, 2'd0, 2'd0};
+        {temp_needs_extra_heat, light_needs_boost, soil_needs_early_water,
+         humid_lower_tolerance, temp_cool_early} = 5'b11100;
       end
-      
-      2'b10: begin  // PEA SHOOTS - Cool, moist
-        temp_low_threshold       = 2'd0;
-        temp_high_threshold      = 2'd2;  // Cool earlier (at "optimal")
-        humid_high_threshold     = 2'd3;
-        light_low_threshold      = 2'd0;
-        soil_low_threshold       = 2'd0;  // Water at "dry"
-        temp_needs_extra_heat    = 1'b0;
-        light_needs_boost        = 1'b0;
-        soil_needs_early_water   = 1'b1;  // More water
-        humid_lower_tolerance    = 1'b0;
-        temp_cool_early          = 1'b1;  // Cooler preference
+      2'b10: begin // PEA SHOOTS
+        {temp_low_threshold, temp_high_threshold, humid_high_threshold,
+         light_low_threshold, soil_low_threshold} = {2'd0, 2'd2, 2'd3, 2'd0, 2'd0};
+        {temp_needs_extra_heat, light_needs_boost, soil_needs_early_water,
+         humid_lower_tolerance, temp_cool_early} = 5'b00101;
       end
-      
-      2'b11: begin  // SUNFLOWER - Dry, warm
-        temp_low_threshold       = 2'd0;
-        temp_high_threshold      = 2'd3;
-        humid_high_threshold     = 2'd2;  // Dehumidify at "optimal"
-        light_low_threshold      = 2'd0;
-        soil_low_threshold       = 2'd1;  // Water at "slightly dry"
-        temp_needs_extra_heat    = 1'b0;
-        light_needs_boost        = 1'b0;
-        soil_needs_early_water   = 1'b0;
-        humid_lower_tolerance    = 1'b1;  // Lower humidity tolerance
-        temp_cool_early          = 1'b0;
+      2'b11: begin // SUNFLOWER
+        {temp_low_threshold, temp_high_threshold, humid_high_threshold,
+         light_low_threshold, soil_low_threshold} = {2'd0, 2'd3, 2'd2, 2'd0, 2'd1};
+        {temp_needs_extra_heat, light_needs_boost, soil_needs_early_water,
+         humid_lower_tolerance, temp_cool_early} = 5'b00010;
       end
     endcase
   end
 
-  // ===========================================================================
-  // INTERNAL SIGNALS
-  // ===========================================================================
-  
-  // Sensor status flags
-  reg temp_needs_heating;
-  reg temp_needs_cooling;
-  reg humid_needs_dehumidify;
-  reg light_needs_on;
-  reg soil_needs_water;
-  
-  // Heartbeat counter
-  reg [24:0] heartbeat_counter;
-  
-  // Override state
-  reg override_active;
+  // SENSOR COMPARISON (uses filtered values)
+  always @(*) begin
+    temp_needs_heating = (temp_filtered <= temp_low_threshold) || (temp_needs_extra_heat && temp_filtered == 2'd1);
+    temp_needs_cooling = (temp_filtered >= temp_high_threshold) || (temp_cool_early && temp_filtered == 2'd2);
+    humid_needs_dehumidify = (humid_filtered >= humid_high_threshold);
+    light_needs_on = (light_filtered <= light_low_threshold) || (light_needs_boost && light_filtered == 2'd1);
+    soil_needs_water = (soil_filtered <= soil_low_threshold);
+  end
 
-  // ===========================================================================
-  // HEARTBEAT GENERATION
-  // ===========================================================================
-  
+  // HEARTBEAT
   always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      heartbeat_counter <= 25'd0;
-      status_heartbeat <= 1'b0;
+      {heartbeat_counter, status_heartbeat} <= {25'd0, 1'b0};
     end else if (ena) begin
       if (heartbeat_counter >= (HEARTBEAT_DIV / 2 - 1)) begin
         heartbeat_counter <= 25'd0;
         status_heartbeat <= ~status_heartbeat;
-      end else begin
+      end else
         heartbeat_counter <= heartbeat_counter + 1'd1;
-      end
     end
   end
 
-  // ===========================================================================
-  // OVERRIDE LOGIC
-  // ===========================================================================
-  
+  // OVERRIDE
   always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
+    if (!rst_n)
       override_active <= 1'b0;
-    end else if (ena) begin
+    else if (ena)
       override_active <= cmd_override;
-    end
   end
 
-  // ===========================================================================
-  // SENSOR COMPARISON LOGIC
-  // ===========================================================================
-  
-  always @(*) begin
-    // Temperature assessment
-    temp_needs_heating = (sensor_temperature <= temp_low_threshold) ||
-                         (temp_needs_extra_heat && (sensor_temperature == 2'd1));
-    
-    temp_needs_cooling = (sensor_temperature >= temp_high_threshold) ||
-                         (temp_cool_early && (sensor_temperature == 2'd2));
-    
-    // Humidity assessment
-    humid_needs_dehumidify = (sensor_humidity >= humid_high_threshold);
-    
-    // Light assessment
-    light_needs_on = (sensor_light <= light_low_threshold) ||
-                     (light_needs_boost && (sensor_light == 2'd1));
-    
-    // Soil moisture assessment
-    soil_needs_water = (sensor_soil_moisture <= soil_low_threshold);
-  end
-
-  // ===========================================================================
-  // ACTUATOR CONTROL LOGIC
-  // ===========================================================================
-  
+  // ACTUATOR CONTROL
   always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      ctrl_water_pump <= 1'b0;
-      ctrl_heater <= 1'b0;
-      ctrl_cooler <= 1'b0;
-      ctrl_light <= 1'b0;
-      ctrl_dehumidifier <= 1'b0;
+      {ctrl_water_pump, ctrl_heater, ctrl_cooler, ctrl_light, ctrl_dehumidifier} <= 5'b00000;
     end else if (ena) begin
-      if (override_active) begin
-        // Override active - turn off all actuators
-        ctrl_water_pump <= 1'b0;
-        ctrl_heater <= 1'b0;
-        ctrl_cooler <= 1'b0;
-        ctrl_light <= 1'b0;
-        ctrl_dehumidifier <= 1'b0;
-      end else begin
-        // Normal autonomous operation
-        ctrl_water_pump <= soil_needs_water;
-        ctrl_heater <= temp_needs_heating;
-        ctrl_cooler <= temp_needs_cooling;
-        ctrl_light <= light_needs_on;
-        ctrl_dehumidifier <= humid_needs_dehumidify;
-      end
+      if (override_active)
+        {ctrl_water_pump, ctrl_heater, ctrl_cooler, ctrl_light, ctrl_dehumidifier} <= 5'b00000;
+      else
+        {ctrl_water_pump, ctrl_heater, ctrl_cooler, ctrl_light, ctrl_dehumidifier} <=
+          {soil_needs_water, temp_needs_heating, temp_needs_cooling, light_needs_on, humid_needs_dehumidify};
     end
   end
 
-  // ===========================================================================
-  // FAULT DETECTION (Placeholder - to be enhanced in Step 3)
-  // ===========================================================================
-  
+  // FAULT DETECTION
   always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
+    if (!rst_n)
       flag_fault <= 1'b0;
-    end else if (ena) begin
-      // Simple fault: heater and cooler both needed (contradiction)
+    else if (ena)
       flag_fault <= temp_needs_heating && temp_needs_cooling;
-    end
   end
 
-  // ===========================================================================
-  // UART INTERFACE (Placeholder - to be implemented in Step 4)
-  // ===========================================================================
-  
-  // ===========================================================================
-  // UART INTERFACE
-  // ===========================================================================
-  
-  // UART signals
+  // UART
   reg [7:0] uart_data;
-  reg uart_send;
+  reg uart_send, fault_sent;
   wire uart_busy;
   
-  // Simple fault code transmission
   always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      uart_data <= 8'h00;
-      uart_send <= 1'b0;
+      {uart_data, uart_send, fault_sent} <= {8'h00, 1'b0, 1'b0};
     end else if (ena) begin
-      // Send fault code when fault detected
-      if (flag_fault && !uart_busy && !uart_send) begin
-        uart_data <= 8'h46;  // ASCII 'F' for Fault
+      if (flag_fault && !fault_sent && !uart_busy) begin
+        uart_data <= 8'h46;
         uart_send <= 1'b1;
-      end else begin
+        fault_sent <= 1'b1;
+      end else
         uart_send <= 1'b0;
-      end
+      if (!flag_fault)
+        fault_sent <= 1'b0;
     end
   end
   
-  // UART transmitter instance
-  uart_tx_simple uart_inst (
-    .clk(clk),
-    .rst_n(rst_n),
-    .data(uart_data),
-    .send(uart_send),
-    .tx(uart_tx),
-    .busy(uart_busy)
-  );
+  uart_tx_simple uart_inst (.clk(clk), .rst_n(rst_n), .data(uart_data), 
+                             .send(uart_send), .tx(uart_tx), .busy(uart_busy));
 
-  // Suppress unused warnings
-  wire _unused = &{1'b0, soil_needs_early_water, humid_lower_tolerance};
+  wire _unused = &{1'b0, soil_needs_early_water, humid_lower_tolerance, temp_trend, humid_trend,
+                   light_trend, soil_trend, temp_min, temp_max, humid_min, humid_max,
+                   light_min, light_max, soil_min, soil_max};
 
 endmodule
+
 // =============================================================================
-// UART TRANSMITTER MODULE (115200 baud @ 25MHz)
+// UART TRANSMITTER
 // =============================================================================
 
 module uart_tx_simple (
-    input  wire       clk,      // 25 MHz clock
-    input  wire       rst_n,    // Active low reset
-    input  wire [7:0] data,     // Data byte to send
-    input  wire       send,     // Pulse high to start transmission
-    output reg        tx,       // UART TX line
-    output reg        busy      // High when transmitting
+    input  wire       clk, rst_n,
+    input  wire [7:0] data,
+    input  wire       send,
+    output reg        tx, busy
 );
 
-  // UART timing (115200 baud @ 25MHz = 217 clocks per bit)
   localparam CLKS_PER_BIT = 217;
-  
-  // State machine
-  localparam IDLE  = 3'd0;
-  localparam START = 3'd1;
-  localparam DATA  = 3'd2;
-  localparam STOP  = 3'd3;
+  localparam [2:0] IDLE = 0, START = 1, DATA = 2, STOP = 3;
   
   reg [2:0] state;
-  reg [7:0] clk_count;
+  reg [7:0] clk_count, tx_data;
   reg [2:0] bit_index;
-  reg [7:0] tx_data;
   
   always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      state <= IDLE;
-      tx <= 1'b1;
-      busy <= 1'b0;
-      clk_count <= 8'd0;
-      bit_index <= 3'd0;
-      tx_data <= 8'd0;
+      {state, tx, busy, clk_count, bit_index, tx_data} <= {IDLE, 1'b1, 1'b0, 8'd0, 3'd0, 8'd0};
     end else begin
       case (state)
         IDLE: begin
-          tx <= 1'b1;
-          busy <= 1'b0;
-          clk_count <= 8'd0;
-          bit_index <= 3'd0;
-          
+          {tx, busy, clk_count, bit_index} <= {1'b1, 1'b0, 8'd0, 3'd0};
           if (send) begin
             tx_data <= data;
-            state <= START;
-            busy <= 1'b1;
+            {state, busy} <= {START, 1'b1};
           end
         end
-        
         START: begin
-          tx <= 1'b0;  // Start bit
-          
-          if (clk_count < CLKS_PER_BIT - 1) begin
-            clk_count <= clk_count + 1'b1;
-          end else begin
-            clk_count <= 8'd0;
-            state <= DATA;
+          tx <= 1'b0;
+          if (clk_count < CLKS_PER_BIT - 1)
+            clk_count <= clk_count + 1'd1;
+          else begin
+            {clk_count, state} <= {8'd0, DATA};
           end
         end
-        
         DATA: begin
           tx <= tx_data[bit_index];
-          
-          if (clk_count < CLKS_PER_BIT - 1) begin
-            clk_count <= clk_count + 1'b1;
-          end else begin
+          if (clk_count < CLKS_PER_BIT - 1)
+            clk_count <= clk_count + 1'd1;
+          else begin
             clk_count <= 8'd0;
-            
-            if (bit_index < 7) begin
-              bit_index <= bit_index + 1'b1;
-            end else begin
-              bit_index <= 3'd0;
-              state <= STOP;
+            if (bit_index < 7)
+              bit_index <= bit_index + 1'd1;
+            else begin
+              {bit_index, state} <= {3'd0, STOP};
             end
           end
         end
-        
         STOP: begin
-          tx <= 1'b1;  // Stop bit
-          
-          if (clk_count < CLKS_PER_BIT - 1) begin
-            clk_count <= clk_count + 1'b1;
-          end else begin
-            clk_count <= 8'd0;
-            state <= IDLE;
-            busy <= 1'b0;
+          tx <= 1'b1;
+          if (clk_count < CLKS_PER_BIT - 1)
+            clk_count <= clk_count + 1'd1;
+          else begin
+            {clk_count, state, busy} <= {8'd0, IDLE, 1'b0};
           end
         end
-        
         default: state <= IDLE;
       endcase
     end
