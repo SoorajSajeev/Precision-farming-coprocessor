@@ -1,56 +1,55 @@
 # Tiny Tapeout project information
 project:
-  title:        "SAR Logic"      # Project title
-  author:       "Venkata Ratnam Bhumireddy"      # Your name
-  discord:      ""      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
-  description:  "Successive Approximation Register Logic"      # One line description of what your project does
-  language:     "Verilog" # other examples include SystemVerilog, Amaranth, VHDL, etc
-  clock_hz:     50000000       # Clock frequency in Hz (or 0 if not applicable)
+  title:        "Precision Farming Coprocessor"      # Project title
+  author:       "SoorajSajeev"                       # Your name
+  discord:      ""                                    # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
+  description:  "Autonomous environmental control coprocessor for microgreens and precision agriculture"      # One line description of what your project does
+  language:     "Verilog"                            # other examples include SystemVerilog, Amaranth, VHDL, etc
+  clock_hz:     25000000                             # Clock frequency in Hz (25 MHz)
 
   # How many tiles your design occupies? A single tile is about 167x108 uM.
-  tiles: "1x1"          # Valid values: 1x1, 1x2, 2x2, 3x2, 4x2, 6x2 or 8x2
+  tiles: "1x2"          # Valid values: 1x1, 1x2, 2x2, 3x2, 4x2, 6x2 or 8x2
 
-  # Your top module name must start with "tt_um_". Make it unique by including your github username:
-  top_module:  "tt_um_example"
+  # Your top module name must start with "tt_um_". Make it unique by including your github username and a name that represents your project.
+  top_module:  "tt_um_SoorajSajeev_precision_farming_coprocessor"
 
   # List your project's source files here.
   # Source files must be in ./src and you must list each source file separately, one per line.
   # Don't forget to also update `PROJECT_SOURCES` in test/Makefile.
   source_files:
     - "project.v"
-    - "sarlogic.v"
 
 # The pinout of your project. Leave unused pins blank. DO NOT delete or add any pins.
 pinout:
   # Inputs
-  ui[0]: "d"
-  ui[1]: ""
-  ui[2]: ""
-  ui[3]: ""
-  ui[4]: ""
-  ui[5]: ""
-  ui[6]: ""
-  ui[7]: ""
+  ui[0]: "sensor_temperature[0] - Temperature sensor LSB"
+  ui[1]: "sensor_temperature[1] - Temperature sensor MSB"
+  ui[2]: "sensor_humidity[0] - Humidity sensor LSB"
+  ui[3]: "sensor_humidity[1] - Humidity sensor MSB"
+  ui[4]: "sensor_light[0] - Light intensity LSB"
+  ui[5]: "sensor_light[1] - Light intensity MSB"
+  ui[6]: "sensor_soil_moisture[0] - Soil moisture LSB"
+  ui[7]: "sensor_soil_moisture[1] - Soil moisture MSB"
 
   # Outputs
-  uo[0]: bitout[0]
-  uo[1]: bitout[1]
-  uo[2]: bitout[2]
-  uo[3]: bitout[3]
-  uo[4]: conv_done
-  uo[5]: ""
-  uo[6]: ""
-  uo[7]: ""
+  uo[0]: "ctrl_water_pump - Water pump control"
+  uo[1]: "ctrl_heater - Heater control"
+  uo[2]: "ctrl_cooler - Cooling/ventilation control"
+  uo[3]: "ctrl_light - Artificial light control"
+  uo[4]: "flag_fault - Fault/alert flag"
+  uo[5]: "status_heartbeat - Heartbeat LED"
+  uo[6]: "ctrl_dehumidifier - Dehumidifier control"
+  uo[7]: "(reserved)"
 
   # Bidirectional pins
-  uio[0]: ""
-  uio[1]: ""
-  uio[2]: ""
-  uio[3]: ""
-  uio[4]: ""
-  uio[5]: ""
-  uio[6]: ""
-  uio[7]: ""
+  uio[0]: "cmd_override (in) - Override/pause autonomous mode"
+  uio[1]: "crop_select[0] (in) - Crop profile selector bit 0"
+  uio[2]: "crop_select[1] (in) - Crop profile selector bit 1"
+  uio[3]: "uart_rx (in) - UART receive (future)"
+  uio[4]: "(reserved)"
+  uio[5]: "(reserved)"
+  uio[6]: "(reserved)"
+  uio[7]: "uart_tx (out) - UART transmit"
 
 # Do not change!
 yaml_version: 6
