@@ -1,5 +1,4 @@
 name: docs
-
 on:
   push:
   workflow_dispatch:
@@ -19,27 +18,12 @@ jobs:
           typst --version
       
       - name: Build PDF
-        run: typst compile docs/info.md docs/info.pdf
-```
-
----
-
-## **OR: Easier Solution - Disable the docs workflow**
-
-If you don't need PDF docs right now, just **disable the entire workflow**:
-
-### **Option A: Rename the file**
-
-Go to:
-👉 **https://github.com/SoorajSajeev/Precision-farming-coprocessor/blob/main/.github/workflows/docs.yaml**
-
-Click the **⋯ (three dots)** menu → **Rename file**
-
-Change name from:
-```
-docs.yaml
-```
-
-To:
-```
-docs.yaml.disabled
+        run: |
+          cd docs
+          typst compile info.md info.pdf
+      
+      - name: Upload PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: datasheet
+          path: docs/info.pdf
