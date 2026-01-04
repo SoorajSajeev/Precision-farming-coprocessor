@@ -148,7 +148,7 @@ module ag_control_core (
   // ===========================================================================
   
   localparam HEARTBEAT_DIV = 25_000_000;  // 1 Hz at 25 MHz
-  localparam FAULT_PERSIST = 100_000;     // ~4ms debounce
+  // localparam FAULT_PERSIST = 100_000;     // Reserved for future fault detection
 
   // ===========================================================================
   // CROP PROFILE THRESHOLDS
