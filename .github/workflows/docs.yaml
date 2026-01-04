@@ -8,10 +8,38 @@ jobs:
   docs:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
+      
+      - name: Install Typst
+        run: |
+          wget https://github.com/typst/typst/releases/download/v0.11.0/typst-x86_64-unknown-linux-musl.tar.xz
+          tar -xf typst-x86_64-unknown-linux-musl.tar.xz
+          sudo mv typst-x86_64-unknown-linux-musl/typst /usr/local/bin/
+          typst --version
+      
+      - name: Build PDF
+        run: typst compile docs/info.md docs/info.pdf
+```
 
-      - name: Build docs
-        uses: TinyTapeout/tt-gds-action/docs@tt08
+---
+
+## **OR: Easier Solution - Disable the docs workflow**
+
+If you don't need PDF docs right now, just **disable the entire workflow**:
+
+### **Option A: Rename the file**
+
+Go to:
+👉 **https://github.com/SoorajSajeev/Precision-farming-coprocessor/blob/main/.github/workflows/docs.yaml**
+
+Click the **⋯ (three dots)** menu → **Rename file**
+
+Change name from:
+```
+docs.yaml
+```
+
+To:
+```
+docs.yaml.disabled
